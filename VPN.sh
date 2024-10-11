@@ -3,7 +3,6 @@
 read -p "Please enter the public IP address: " SERVER_PUB_IP
 echo "You entered the public IP address: $SERVER_PUB_IP"
 
-# Determine the default network interface
 SERVER_NIC="$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)"
 if [ -z "$SERVER_NIC" ]; then
     echo "Error: Unable to determine the default network interface."
@@ -32,8 +31,9 @@ function installWireGuard() {
     SERVER_PRIV_KEY=$(wg genkey)
     SERVER_PUB_KEY=$(echo "${SERVER_PRIV_KEY}" | wg pubkey)
 
-    # Write iptables rules to the WireGuard config file using a here document
-    cat <<EOF >> "/etc/wireguard/${SERVER_WG_NIC}.conf"
+    if [[ ! -f "/etc/wireguard/${SERVER_WG_NIC}.conf" ]]; then
+
+        cat <<EOF >> "/etc/wireguard/${SERVER_WG_NIC}.conf"
 [Interface]
 PrivateKey = ${SERVER_PRIV_KEY}
 Address = ${SERVER_WG_IPV4}/24
@@ -48,6 +48,7 @@ PostDown = iptables -D FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEP
 PostDown = iptables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
 PostDown = iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
 EOF
+    fi
 
     echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/wg.conf
     sysctl --system || { echo "Error: Failed to apply sysctl settings."; exit 1; }
@@ -111,11 +112,23 @@ AllowedIPs = ${CLIENT_WG_IPV4}/32" >> "${BASE_DIR}/${SERVER_WG_NIC}.conf"
 
     wg syncconf "${SERVER_WG_NIC}" <(wg-quick strip "${SERVER_WG_NIC}") || { echo "Error: Failed to sync WireGuard configuration."; exit 1; }
 
-    if command -v qrencode &>/dev/null; then
-        echo -e "\nHere is your client config file as a QR Code:\n"
+    echo -e "\nHere is your client config file as a QR Code:\n"
+    while true; do
         qrencode -t ansiutf8 -l L < "${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.conf"
-        echo ""
-    fi
+        echo "QR codes generated with qrencode can have errors and may not be recognized."
+        echo "If it does not work, enter 1 to generate a new code, or press 2 to exit."
+        read -rp "Your choice: " CHOICE
+
+        if [[ "$CHOICE" == "1" ]]; then
+            echo "Generating a new QR code..."
+            continue  
+        elif [[ "$CHOICE" == "2" ]]; then
+            echo "Exiting."
+            exit 0 
+        else
+            echo "Invalid choice. Please enter 1 to generate a new code or 2 to exit."
+        fi
+    done
 
     echo "Your client config file is in ${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.conf"
 }
