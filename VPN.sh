@@ -40,15 +40,15 @@ function installWireGuard() {
     apt-get install -y wireguard iptables resolvconf qrencode || { echo "Error: Failed to install required packages."; exit 1; }
 
     mkdir -p "$BASE_DIR"
-    chmod 600 -R "$BASE_DIR"
+    chmod 700 "$BASE_DIR"
 
     SERVER_PRIV_KEY=$(wg genkey)
     SERVER_PUB_KEY=$(echo "${SERVER_PRIV_KEY}" | wg pubkey)
 
     # Check if the server configuration already exists
-    if ! grep -q "\[Interface\]" "/etc/wireguard/${SERVER_WG_NIC}.conf"; then
+    if [ ! -f "/etc/wireguard/${SERVER_WG_NIC}.conf" ] || ! grep -q "\[Interface\]" "/etc/wireguard/${SERVER_WG_NIC}.conf"; then
         # Write iptables rules to the WireGuard config file using a here document
-        cat <<EOF >> "/etc/wireguard/${SERVER_WG_NIC}.conf"
+        cat <<EOF > "/etc/wireguard/${SERVER_WG_NIC}.conf"
 [Interface]
 PrivateKey = ${SERVER_PRIV_KEY}
 Address = ${SERVER_WG_IPV4}/24
@@ -72,13 +72,8 @@ EOF
     systemctl enable "wg-quick@${SERVER_WG_NIC}" || { echo "Error: Failed to enable wg-quick service."; exit 1; }
 
     read_ip_address  # Call the function to read the IP address
-
-    while true; do
-        newClient
-        echo "If you want to add more clients, simply run this script again!"
-        read -rp "Do you want to add another client? (y/n): " choice
-        [[ "$choice" != "y" ]] && break
-    done
+    newClient
+    echo "If you want to add more clients, simply run this script again!"
 }
 
 function newClient() {
@@ -86,10 +81,10 @@ function newClient() {
 
     read -rp "Client name: " CLIENT_NAME
 
-    # Check if the CLIENT_NAME is empty or invalid
-    if [[ -z "$CLIENT_NAME" || ! "$CLIENT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-        echo "Error: Invalid client name. It must be alphanumeric, underscores, or dashes and cannot be empty."
-        return  # Return instead of exiting to allow for retrying
+    # Check if the CLIENT_NAME is empty
+    if [[ -z "$CLIENT_NAME" ]]; then
+        echo "Error: Client name cannot be empty."
+        exit 1
     fi
 
     DOT_IP=2
@@ -101,7 +96,7 @@ function newClient() {
         ((DOT_IP++))
         if [[ ${DOT_IP} -gt 254 ]]; then
             echo "The subnet configured supports only 253 clients."
-            return  # Return instead of exiting to allow for retrying
+            exit 1
         fi
     done
 
@@ -131,6 +126,7 @@ PublicKey = ${CLIENT_PUB_KEY}
 PresharedKey = ${CLIENT_PRE_SHARED_KEY}
 AllowedIPs = ${CLIENT_WG_IPV4}/32" >> "${BASE_DIR}/${SERVER_WG_NIC}.conf"
 
+    # Sync WireGuard configuration
     wg syncconf "${SERVER_WG_NIC}" <(wg-quick strip "${SERVER_WG_NIC}") || { echo "Error: Failed to sync WireGuard configuration."; exit 1; }
 
     echo -e "\nHere is your client config file as a QR Code:\n"
