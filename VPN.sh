@@ -11,7 +11,7 @@ CLIENT_DNS_1="$(ip -4 addr show "$SERVER_NIC" | grep -oP '(?<=inet\s)\d+(\.\d+){
 BASE_DIR="/etc/wireguard"
 CLIENT_CONF_DIR="${BASE_DIR}/client_configs"
 mkdir -p "$CLIENT_CONF_DIR" 
-chmod 700 "$CLIENT_CONF_DIR"  # More restrictive permissions
+chmod 700 "$CLIENT_CONF_DIR"  
 
 # Get the server's public IP address
 SERVER_PUB_IP="$(curl -s ifconfig.me)"
@@ -104,55 +104,6 @@ EOF
 
 installWireGuard
 
-function installpihole() {
-    curl -sSL https://install.pi-hole.net | bash -s -- --unattended
-}
-
-installpihole
-
-function ad_list() {
-
-        adlists=(
-        "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-        "https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/filters/filter.txt"
-        "https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/filters/filter_1.txt"
-        "https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/filters/filter_2.txt"
-        "https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/filters/filter_3.txt"
-        "https://raw.githubusercontent.com/MatteoGabriele/Whitelist/master/whitelist.txt"
-        "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/README.md"
-        "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/hosts.txt"
-        "https://raw.githubusercontent.com/NeverDecaf/hosts/master/hosts"
-        "https://raw.githubusercontent.com/YourFrnd/Awesome-Ads-Lists/master/adblock.txt"
-        "https://raw.githubusercontent.com/username3/Hosts/master/hosts"
-        "https://raw.githubusercontent.com/username4/Hosts/master/hosts"
-        "https://raw.githubusercontent.com/username5/hosts/master/hosts"
-        "https://raw.githubusercontent.com/username6/Hosts/master/hosts"
-        "https://raw.githubusercontent.com/username7/hosts/master/hosts"
-        "https://raw.githubusercontent.com/username8/hosts/master/hosts"
-        "https://raw.githubusercontent.com/username9/hosts/master/hosts"
-        "https://raw.githubusercontent.com/username10/hosts/master/hosts"
-        "https://raw.githubusercontent.com/username11/hosts/master/hosts"
-        "https://raw.githubusercontent.com/username12/hosts/master/hosts"
-    )
-
-
- for adlist in "${adlists[@]}"; do
-        echo "$adlist" | sudo tee -a /etc/pihole/adlists.list > /dev/null
-    done
-
-    pihole -g
-}
-
-ad_list
-
-function restart_services() {
-    echo "Restarting WireGuard and Pi-hole services..."
-    sudo systemctl restart "wg-quick@${SERVER_WG_NIC}" || { echo "Error: Failed to restart WireGuard service."; exit 1; }
-    sudo systemctl restart pihole-FTL || { echo "Error: Failed to restart Pi-hole service."; exit 1; }
-    echo "Services restarted successfully."
-}
-
-restart_services
 
 function displayqr() {
     echo -e "\nHere is your client config file as a QR Code:\n"
