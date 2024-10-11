@@ -27,9 +27,9 @@ Please note that the QR code generation tool might require a few attempts to out
 
 ### Adding Additional Clients
 
-To add an additional client, simply run the setup script again:
+To add an additional client, simply run the setup script again in the **wireguard-pihole** directory:
 
-`cd wireguard-pihole && ./VPN.sh`
+`./VPN.sh`
 
 
 ## Features
