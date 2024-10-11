@@ -72,8 +72,13 @@ EOF
     systemctl enable "wg-quick@${SERVER_WG_NIC}" || { echo "Error: Failed to enable wg-quick service."; exit 1; }
 
     read_ip_address  # Call the function to read the IP address
-    newClient
-    echo "If you want to add more clients, simply run this script again!"
+
+    while true; do
+        newClient
+        echo "If you want to add more clients, simply run this script again!"
+        read -rp "Do you want to add another client? (y/n): " choice
+        [[ "$choice" != "y" ]] && break
+    done
 }
 
 function newClient() {
@@ -81,10 +86,10 @@ function newClient() {
 
     read -rp "Client name: " CLIENT_NAME
 
-    # Check if the CLIENT_NAME is empty
-    if [[ -z "$CLIENT_NAME" ]]; then
-        echo "Error: Client name cannot be empty."
-        exit 1
+    # Check if the CLIENT_NAME is empty or invalid
+    if [[ -z "$CLIENT_NAME" || ! "$CLIENT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        echo "Error: Invalid client name. It must be alphanumeric, underscores, or dashes and cannot be empty."
+        return  # Return instead of exiting to allow for retrying
     fi
 
     DOT_IP=2
@@ -96,7 +101,7 @@ function newClient() {
         ((DOT_IP++))
         if [[ ${DOT_IP} -gt 254 ]]; then
             echo "The subnet configured supports only 253 clients."
-            exit 1
+            return  # Return instead of exiting to allow for retrying
         fi
     done
 
