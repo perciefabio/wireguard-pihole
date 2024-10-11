@@ -1,8 +1,22 @@
 #!/bin/bash
 
-read -p "Please enter the public IP address: " SERVER_PUB_IP
-echo "You entered the public IP address: $SERVER_PUB_IP"
+# File to store the public IP address
+IP_FILE="/etc/wireguard/server_ip.txt"
+SERVER_PUB_IP=""
 
+# Function to read the public IP address
+function read_ip_address() {
+    if [ -f "$IP_FILE" ]; then
+        SERVER_PUB_IP=$(cat "$IP_FILE")
+        echo "Using existing public IP address: $SERVER_PUB_IP"
+    else
+        read -p "Please enter the public IP address: " SERVER_PUB_IP
+        echo "$SERVER_PUB_IP" > "$IP_FILE"
+        echo "You entered and saved the public IP address: $SERVER_PUB_IP"
+    fi
+}
+
+# Determine the default network interface
 SERVER_NIC="$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)"
 if [ -z "$SERVER_NIC" ]; then
     echo "Error: Unable to determine the default network interface."
@@ -31,8 +45,9 @@ function installWireGuard() {
     SERVER_PRIV_KEY=$(wg genkey)
     SERVER_PUB_KEY=$(echo "${SERVER_PRIV_KEY}" | wg pubkey)
 
-    if [[ ! -f "/etc/wireguard/${SERVER_WG_NIC}.conf" ]]; then
-
+    # Check if the server configuration already exists
+    if ! grep -q "\[Interface\]" "/etc/wireguard/${SERVER_WG_NIC}.conf"; then
+        # Write iptables rules to the WireGuard config file using a here document
         cat <<EOF >> "/etc/wireguard/${SERVER_WG_NIC}.conf"
 [Interface]
 PrivateKey = ${SERVER_PRIV_KEY}
@@ -56,6 +71,7 @@ EOF
     systemctl start "wg-quick@${SERVER_WG_NIC}" || { echo "Error: Failed to start wg-quick service."; exit 1; }
     systemctl enable "wg-quick@${SERVER_WG_NIC}" || { echo "Error: Failed to enable wg-quick service."; exit 1; }
 
+    read_ip_address  # Call the function to read the IP address
     newClient
     echo "If you want to add more clients, simply run this script again!"
 }
@@ -113,6 +129,8 @@ AllowedIPs = ${CLIENT_WG_IPV4}/32" >> "${BASE_DIR}/${SERVER_WG_NIC}.conf"
     wg syncconf "${SERVER_WG_NIC}" <(wg-quick strip "${SERVER_WG_NIC}") || { echo "Error: Failed to sync WireGuard configuration."; exit 1; }
 
     echo -e "\nHere is your client config file as a QR Code:\n"
+
+    # Loop for QR code generation and error handling
     while true; do
         qrencode -t ansiutf8 -l L < "${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.conf"
         echo "QR codes generated with qrencode can have errors and may not be recognized."
@@ -121,10 +139,10 @@ AllowedIPs = ${CLIENT_WG_IPV4}/32" >> "${BASE_DIR}/${SERVER_WG_NIC}.conf"
 
         if [[ "$CHOICE" == "1" ]]; then
             echo "Generating a new QR code..."
-            continue  
+            continue  # Go back to the beginning of the loop to generate a new QR code
         elif [[ "$CHOICE" == "2" ]]; then
             echo "Exiting."
-            exit 0 
+            exit 0  # Exit the script
         else
             echo "Invalid choice. Please enter 1 to generate a new code or 2 to exit."
         fi
