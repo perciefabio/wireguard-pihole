@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Get the server's network interface and configuration
 SERVER_NIC="$(ip -4 route ls | grep default | awk '{print $5}' | head -1)"
 SERVER_PUB_NIC="$SERVER_NIC"
 SERVER_WG_NIC="wg0"
@@ -11,11 +10,7 @@ CLIENT_DNS_1="$(ip -4 addr show "$SERVER_NIC" | grep -oP '(?<=inet\s)\d+(\.\d+){
 BASE_DIR="/etc/wireguard"
 CLIENT_CONF_DIR="${BASE_DIR}/client_configs"
 mkdir -p "$CLIENT_CONF_DIR" 
-<<<<<<< HEAD
-chmod 700 "$CLIENT_CONF_DIR"  # More restrictive permissions
-=======
-chmod 700 "$CLIENT_CONF_DIR"  
->>>>>>> 3246d720413fd841a3aa53f173acbbf9649d67df
+chmod 700 "$CLIENT_CONF_DIR" 
 
 # Get the server's public IP address
 SERVER_PUB_IP="$(curl -s ifconfig.me)"
@@ -46,7 +41,7 @@ PostDown = iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
 EOF
 
         echo "net.ipv4.ip_forward = 1" | sudo tee /etc/sysctl.d/wg.conf > /dev/null
-        sudo sysctl -p /etc/sysctl.d/wg.conf  # Apply sysctl changes
+        sudo sysctl -p /etc/sysctl.d/wg.conf 
 
         sudo systemctl start "wg-quick@${SERVER_WG_NIC}" || { echo "Error: Failed to start wg-quick service."; exit 1; }
         sudo systemctl enable "wg-quick@${SERVER_WG_NIC}" || { echo "Error: Failed to enable wg-quick service."; exit 1; }
@@ -108,7 +103,6 @@ EOF
 
 installWireGuard
 
-<<<<<<< HEAD
 function installpihole() {
     curl -sSL https://install.pi-hole.net | bash -s -- --unattended
 }
@@ -139,8 +133,6 @@ function restart_services() {
 }
 
 restart_services
-=======
->>>>>>> 3246d720413fd841a3aa53f173acbbf9649d67df
 
 function displayqr() {
     echo -e "\nHere is your client config file as a QR Code:\n"
