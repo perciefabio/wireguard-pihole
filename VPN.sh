@@ -11,7 +11,11 @@ CLIENT_DNS_1="$(ip -4 addr show "$SERVER_NIC" | grep -oP '(?<=inet\s)\d+(\.\d+){
 BASE_DIR="/etc/wireguard"
 CLIENT_CONF_DIR="${BASE_DIR}/client_configs"
 mkdir -p "$CLIENT_CONF_DIR" 
+<<<<<<< HEAD
 chmod 700 "$CLIENT_CONF_DIR"  # More restrictive permissions
+=======
+chmod 700 "$CLIENT_CONF_DIR"  
+>>>>>>> 3246d720413fd841a3aa53f173acbbf9649d67df
 
 # Get the server's public IP address
 SERVER_PUB_IP="$(curl -s ifconfig.me)"
@@ -104,6 +108,7 @@ EOF
 
 installWireGuard
 
+<<<<<<< HEAD
 function installpihole() {
     curl -sSL https://install.pi-hole.net | bash -s -- --unattended
 }
@@ -134,6 +139,8 @@ function restart_services() {
 }
 
 restart_services
+=======
+>>>>>>> 3246d720413fd841a3aa53f173acbbf9649d67df
 
 function displayqr() {
     echo -e "\nHere is your client config file as a QR Code:\n"
